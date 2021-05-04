@@ -12,7 +12,7 @@ This script is at the moment heavily dependend on the afformentioned site stayin
 
 ## Usage
 
-Take a look at the **-h** listing:
+Take a look at the `-h` listing:
 
 ```
 usage: rom-bulk-patcher.py [-h] [--setid [SETID]] [--search PATTERN] [--stoponerror] [--crcsearchlimit N] [--downloadonly] [indir] [outdir]
