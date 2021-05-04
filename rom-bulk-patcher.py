@@ -85,7 +85,7 @@ def run_patches(in_dir:str, out_dir:str=None, set_name:str=None, check_finalcrc:
 
     games = []
     if search != None:
-        # Search fuzzyly for a specific patch by name.
+        # Search fuzzily for a specific patch by name.
         games = sorted([[el.get('name'), fuzzywuzzy.fuzz.ratio(el.get('name')[:len(search)].upper(), search.upper()), el] for el in games_el], key=lambda x: x[1], reverse=True)
         if games[0][1] <= 50:
             print()
@@ -247,7 +247,7 @@ parser.add_argument('outdir',           type=str, help='target directory for pat
 parser.add_argument('--setid',          type=str, help='name of the rom set, i.e. "SNES" (a matching "SNES.xml" database file needs to be located next to this script)', nargs='?', default=None)
 parser.add_argument('--search',         type=str, help='filter the patch list to apply only patches that match the PATTERN (uses fuzzy search)', metavar='PATTERN', default=None)
 parser.add_argument('--stoponerror',              help='stop processing patch database if a patch fails to apply', action='store_true')
-parser.add_argument('--crcsearchlimit', type=int, help='limit the number of maximum file candiates whose CRC should be checked to id a rom that has an unexpected name (0=do not search by CRC)', metavar='N', default=10)
+parser.add_argument('--crcsearchlimit', type=int, help='limit the number of maximum file candidates whose CRC should be checked to id a rom that has an unexpected name (0=do not search by CRC)', metavar='N', default=10)
 parser.add_argument('--downloadonly',             help='download database and patches, but do not apply patches', action='store_true')
 args = parser.parse_args()
 
