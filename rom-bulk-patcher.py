@@ -4,7 +4,7 @@
 
 __author__      = "sklick"
 __copyright__   = "Copyright 2021, sklick"
-__version__     = "0.0.2"
+__version__     = "0.0.3"
 __credits__     = ["sklick", "mibro"]
 __license__     = "MIT"
 __status__      = "Prealpha"
@@ -12,42 +12,56 @@ __status__      = "Prealpha"
 import os, sys, re, io, glob, zlib, urllib.parse, urllib.request, zipfile
 import xml.etree.ElementTree as ET, bps.apply, ips_util, fuzzywuzzy.fuzz
 
-def run_patches(set_name:str, rom_dir:str, out_dir:str=None, check_finalcrc:bool=True, search:str=None, download_only:bool=False, stop_on_error:bool=False, crc_search_limit:int=10):
+def download_databases(db_dir:str):
+    rhdb_file = 'RHDB_App_v0.7.2.zip'
+    if not os.path.isfile(rhdb_file):
+        # If the RHDB file is not present, try to download it.
+        with urllib.request.urlopen('https://romhackdb.com/releases/' + rhdb_file) as dl_file:
+            z = zipfile.ZipFile(io.BytesIO(dl_file.read()))
+            for file in z.namelist():
+                if file.startswith('database'):
+                    z.extract(file)    
+    else:
+        # Extract RHDB if it is was locally found.
+        z = zipfile.ZipFile(rhdb_file)
+        for file in z.namelist():
+            if file.startswith('database'):
+                z.extract(file)    
+
+
+def run_patches(in_dir:str, out_dir:str=None, set_name:str=None, check_finalcrc:bool=True, search:str=None, download_only:bool=False, stop_on_error:bool=False, crc_search_limit:int=10):
+    db_dir = 'database'
+    if set_name == None:
+        if not os.path.isdir(db_dir):
+            download_databases(db_dir)
+        sets = sorted([[os.path.splitext(os.path.basename(s))[0], 0.5 * (fuzzywuzzy.fuzz.partial_ratio(os.path.splitext(os.path.basename(s))[0], in_dir) + fuzzywuzzy.fuzz.ratio(os.path.splitext(os.path.basename(s))[0], in_dir))] for s in glob.glob(os.path.join(db_dir, '*.xml'))], key=lambda x: x[1], reverse=True)
+        if len(sets) == 0 or sets[0][1] <= 50:
+            print('could not guess the --setid from indir. please speficy --setid')    
+            return
+        set_name = sets[0][0]
     if out_dir == None:
-        print('using rom_dir as out_dir')
-        out_dir = rom_dir
+        print('using in_dir as out_dir')
+        out_dir = in_dir
     
-    xml_name  = os.path.join('database', '{}.xml'.format(set_name))
+    xml_name  = os.path.join(db_dir, '{}.xml'.format(set_name))
     patch_dir = os.path.join(os.path.abspath(os.path.split(__file__)[0]), 'patches', set_name)
 
     # If a database file is missing, download the databases from the publically available RHDB project.
     if not os.path.isfile(xml_name):
-        rhdb_file = 'RHDB_App_v0.7.2.zip'
-        if not os.path.isfile(rhdb_file):
-            # If the RHDB file is not present, try to download it.
-            with urllib.request.urlopen('https://romhackdb.com/releases/' + rhdb_file) as dl_file:
-                z = zipfile.ZipFile(io.BytesIO(dl_file.read()))
-                for file in z.namelist():
-                    if file.startswith('database'):
-                        z.extract(file)    
-        else:
-            # Extract RHDB if it is was locally found.
-            z = zipfile.ZipFile(rhdb_file)
-            for file in z.namelist():
-                if file.startswith('database'):
-                    z.extract(file)    
+        download_databases(db_dir)
 
     # Check for/make required directories.
     if not os.path.isfile(xml_name):
         print('xml database "{}" not found'.format(xml_name), file=sys.stderr)
-        exit(1)
-    if not os.path.isdir(rom_dir):
-        print('set directory "{}" not found'.format(rom_dir), file=sys.stderr)
-        exit(1)
-    if not os.path.isdir(out_dir):
-        os.makedirs(out_dir)
+        return
     if not os.path.isdir(patch_dir):
         os.makedirs(patch_dir)
+    if not download_only:
+        if not os.path.isdir(in_dir):
+            print('set directory "{}" not found'.format(in_dir), file=sys.stderr)
+            return
+        if not os.path.isdir(out_dir):
+            os.makedirs(out_dir)
 
     # Parse database xml-file.
     root_el   = ET.parse(xml_name).getroot()
@@ -131,13 +145,13 @@ def run_patches(set_name:str, rom_dir:str, out_dir:str=None, check_finalcrc:bool
                 # Cleanup file name in case there is more than one patch per game.
                 re_res = re.match('^(.*)_\\d+', name)
                 rom_name = name if not re_res else re_res.groups()[0]
-                rom_file = os.path.join(rom_dir, '{}.{}'.format(rom_name, rom_ext))
+                rom_file = os.path.join(in_dir, '{}.{}'.format(rom_name, rom_ext))
                 
                 # Fuzzy CRC search: sort all available files by name fuzzily, then search for baseCRC.
                 # Can be limited to a certain number of most likely files to increase speed.
                 # Only runs if the rom was not found by the name provided in the database.
                 if not os.path.isfile(rom_file):
-                    files = [[file, fuzzywuzzy.fuzz.ratio(os.path.basename(file), rom_name)] for file in glob.glob(os.path.join(rom_dir, '**'))]
+                    files = [[file, fuzzywuzzy.fuzz.ratio(os.path.basename(file), rom_name)] for file in glob.glob(os.path.join(in_dir, '**'))]
                     files = sorted(files, key=lambda x: x[1], reverse=True)[:len(files) if crc_search_limit == None else crc_search_limit]
                     print(' {:20} : {} '.format('fuzzy_crc', 'checking {} file crc(s)'.format(len(files))))
                     for check_file, ratio in files:
@@ -228,16 +242,20 @@ def run_patches(set_name:str, rom_dir:str, out_dir:str=None, check_finalcrc:bool
 
 import argparse
 parser = argparse.ArgumentParser(description='v' + __version__ + '. Apply patch database file against a rom set.')
-parser.add_argument('setid',            type=str, help='name of the rom set, i.e. "SNES" (a matching "SNES.xml" database file needs to be located next to this script)')
 parser.add_argument('indir',            type=str, help='rom set directory containing the original rom dumps', nargs='?')
 parser.add_argument('outdir',           type=str, help='target directory for patched rom files (defaults to indir)', nargs='?', default=None)
+parser.add_argument('--setid',          type=str, help='name of the rom set, i.e. "SNES" (a matching "SNES.xml" database file needs to be located next to this script)', nargs='?', default=None)
 parser.add_argument('--search',         type=str, help='filter the patch list to apply only patches that match the PATTERN (uses fuzzy search)', metavar='PATTERN', default=None)
 parser.add_argument('--stoponerror',              help='stop processing patch database if a patch fails to apply', action='store_true')
 parser.add_argument('--crcsearchlimit', type=int, help='limit the number of maximum file candiates whose CRC should be checked to id a rom that has an unexpected name (0=do not search by CRC)', metavar='N', default=10)
 parser.add_argument('--downloadonly',             help='download database and patches, but do not apply patches', action='store_true')
 args = parser.parse_args()
 
-if not args.downloadonly and not args.indir:
-    parser.error('indir is required if --downloadonly is not specified')
+if not args.downloadonly:
+    if not args.indir:
+        parser.error('indir is required if --downloadonly is not specified')
+else:
+    if not args.setid:
+        parser.error('--downloadonly requires --setid')
 
-run_patches(args.setid, args.indir, args.outdir, search=args.search, download_only=args.downloadonly, stop_on_error=args.stoponerror, crc_search_limit=args.crcsearchlimit)
+run_patches(args.indir, args.outdir, args.setid, search=args.search, download_only=args.downloadonly, stop_on_error=args.stoponerror, crc_search_limit=args.crcsearchlimit)

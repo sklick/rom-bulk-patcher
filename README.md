@@ -15,17 +15,17 @@ This script is at the moment heavily dependend on the afformentioned site stayin
 Take a look at the **-h** listing:
 
 ```
-usage: rom-bulk-patcher.py [-h] [--search PATTERN] [--stoponerror] [--crcsearchlimit N] [--downloadonly] setid [indir] [outdir]
+usage: rom-bulk-patcher.py [-h] [--setid [SETID]] [--search PATTERN] [--stoponerror] [--crcsearchlimit N] [--downloadonly] [indir] [outdir]
 
-Apply RHDB database file against a rom set.
+v0.0.3. Apply patch database file against a rom set.
 
 positional arguments:
-  setid               name of the rom set, i.e. "SNES" (a matching "SNES.xml" database file needs to be located next to this script)
   indir               rom set directory containing the original rom dumps
   outdir              target directory for patched rom files (defaults to indir)
 
 optional arguments:
   -h, --help          show this help message and exit
+  --setid [SETID]     name of the rom set, i.e. "SNES" (a matching "SNES.xml" database file needs to be located next to this script)
   --search PATTERN    filter the patch list to apply only patches that match the PATTERN (uses fuzzy search)
   --stoponerror       stop processing patch database if a patch fails to apply
   --crcsearchlimit N  limit the number of maximum file candiates whose CRC should be checked to id a rom that has an unexpected name (0=do not search by CRC)
@@ -34,9 +34,9 @@ optional arguments:
 
 ## Hints
 
-- `setid` is always required.
 - `indir` is only optional when using `--downloadonly`.
 - `outdir` defaults to `indir`. If you do not want your original and patched files to mix, use this option.
+- `--setid` must be a casesensitive match to one of the database files. The script will attempt to find a matching database based on the `indir` 
 - Errors that occure during bulk patching will be listed again at the end of the process, but you can terminated the process on the first error with `--stoponerror` to work on each problematic patch before proceeding.
 
 ## Matching process
