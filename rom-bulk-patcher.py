@@ -171,7 +171,7 @@ def run_patches(set_name:str, rom_dir:str, out_dir:str=None, check_finalcrc:bool
                                     source = open(rom_file, 'rb')
                                     target = open(out_file, 'wb')
                                     patch  = open(patch_file, 'rb')
-                                    bps.apply.apply_to_files(patch, source, target);
+                                    bps.apply.apply_to_files(patch, source, target)
                                 except Exception as ex:
                                     res = 'bps patch failed [{}]'.format(ex)
                                 if not check_finalcrc:
@@ -193,7 +193,7 @@ def run_patches(set_name:str, rom_dir:str, out_dir:str=None, check_finalcrc:bool
                                     source = open(rom_file, 'rb')
                                     target = open(out_file, 'wb')
                                     target.write(patch.apply(source.read()))
-                                    bps.apply.apply_to_files(patch, source, target);
+                                    bps.apply.apply_to_files(patch, source, target)
                                 except Exception as ex:
                                     res = 'ips patch failed [{}]'.format(ex)                                    
                                 if not check_finalcrc:
